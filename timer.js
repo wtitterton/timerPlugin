@@ -15,22 +15,20 @@ var Timer = (function(){
   this.Timer = function()
   {
     // global variables
+    this.isOn = null;
+    this.time = 0;
+    this.offset = null;
     this.timerInterval = null;
-    this.units = {};
     this.container = null;
     this.timerElement = null;
     this.startBtn = null;
     this.stopBtn = null;
     this.resetBtn = null;
-    this.days = 0;
-    this.hours = "00";
-    this.mins = "00";
-    this.seconds = "00";
-    this.miliseconds = "00";
+
     // default options
     var defaults = {
       timerType:'default',
-      milliseconds:false,
+      showMilliseconds:false,
       customClass:'',
       container:'',
       controls:true
@@ -55,10 +53,45 @@ var Timer = (function(){
     return source;
   }
   //PRIVATE METHODS
-  var update = function()
+  function update()
   {
-    // render timer on interval
-    console.log('fdfdfddf');
+    this.time += delta.call(this);
+    var formattedTime = timeFormatter.call(this,this.time);
+    this.timerElement.textContent = formattedTime;
+  }
+
+  function timeFormatter(timeInMilliseconds)
+  {
+    var time = new Date(timeInMilliseconds);
+    var minutes = time.getMinutes().toString();
+    var seconds = time.getSeconds().toString();
+    var milliseconds = time.getMilliseconds().toString();
+
+    if(minutes.length < 2)
+    {
+      minutes = "0" + minutes;
+    }
+    if(seconds.length < 2)
+    {
+      seconds = "0" + seconds;
+    }
+    while(milliseconds.length < 3)
+    {
+        milliseconds = "0" + milliseconds;
+    }
+    if(this.options.showMilliseconds)
+    {
+      return minutes + ":" + seconds + "." + milliseconds;
+    }
+    return minutes + ":" + seconds;
+  }
+
+  function delta()
+  {
+    var now = Date.now();
+    var timePassed = now - this.offset;
+    this.offset = now;
+    return timePassed;
   }
 
   function buildTimer()
@@ -94,44 +127,28 @@ var Timer = (function(){
 
   function buildDefaultTimer()
   {
-    //create doc fragment to build UI with
-    docFrag = document.createDocumentFragment();
     //create timer element and add default and custom id's and classes
-    this.timerElement = document.createElement('div');
+    this.timerElement = document.createElement('h1');
+    this.timerElement.innerHTML = "00:00:000";
     this.timerElement.classList.add('timer');
     this.timerElement.setAttribute("id",createUniqueId.call(this));
     this.options.customClass ? this.timerElement.classList.add(this.options.customClass) : this.options.customClass ;
-    var hoursElement = document.createElement('span');
-    hoursElement.classList.add("unit","hours");
-    hoursElement.textContent = this.hours + ":";
-    var minsElement = document.createElement('span');
-    minsElement.classList.add("unit","mins");
-    minsElement.textContent = this.mins + ":";
-    var secondsElement = document.createElement('span');
-    secondsElement.classList.add("unit", "seconds");
-    secondsElement.textContent = this.seconds;
-    if(this.options.milliseconds)
+
+    if(this.options.showMilliseconds)
     {
-      var millisecondsElement = document.createElement('span');
-      millisecondsElement.classList.add("unit","milli");
-      millisecondsElement.textContent = this.milliseconds;
-      appendElementsToContainerFromArray.call(this,this.timerElement,[hoursElement,minsElement, secondsElement, millisecondsElement ]);
-      this.units.milliseconds = millisecondsElement;
+      // timer with milliseconds
+      this.timerElement.innerHTML = "00:00:000";
     }
-    appendElementsToContainerFromArray.call(this,this.timerElement,[hoursElement,minsElement, secondsElement]);
+    else
+    {
+        this.timerElement.innerHTML = "00:00";
+    }
+    // append docFrag to the container specified in options
+    this.container.appendChild(this.timerElement);
     if(this.options.controls)
     {
      createControls.call(this);
     }
-
-    // grab unit elements so we can update values later
-    this.units.hours = hoursElement;
-    this.units.mins = minsElement;
-    this.units.seconds = secondsElement;
-    // append finished timer element to docfrag
-    docFrag.appendChild(this.timerElement);
-    // append docFrag to the container specified in options
-    this.container.appendChild(docFrag);
   }
 
   function appendElementsToContainerFromArray(con,arr)
@@ -156,7 +173,7 @@ var Timer = (function(){
     this.resetBtn.value = "Reset";
     this.resetBtn.textContent = "Reset";
     appendElementsToContainerFromArray.call(this,controlsCon,[this.startBtn, this.stopBtn, this.resetBtn ]);
-    this.timerElement.appendChild(controlsCon);
+    this.container.appendChild(controlsCon);
   }
 
   function createUniqueId()
@@ -180,28 +197,6 @@ var Timer = (function(){
     bindEvents.call(this);
   }
 
-  Timer.prototype.stop = function()
-  {
-    clearInterval(this.timerInterval);
-  }
-
-  Timer.prototype.start = function()
-  {
-    this.timerInterval = setInterval(function(){
-    update.call(this);
-    }.bind(this),1000);
-
-  }
-
-  Timer.prototype.reset = function()
-  {
-    this.stop();
-    this.hours = "00";
-    this.mins = "00";
-    this.seconds = "00";
-    this.miliseconds = "00";
-  }
-
   function bindEvents()
   {
     if(this.options.controls)
@@ -211,11 +206,50 @@ var Timer = (function(){
       this.stopBtn.addEventListener('click',this.stop.bind(this));
       this.resetBtn.addEventListener('click',this.reset.bind(this));
     }
-
-
-
   }
   //PUBLIC METHODS
+  Timer.prototype.stop = function()
+  {
+    if(this.isOn)
+    {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+      this.isOn = false;
+    }
+  }
+
+  Timer.prototype.start = function()
+  {
+    if(!this.isOn)
+    {
+      var intervalSpeed;
+      // set interval speed depending on if milliseconds is true or false
+      this.options.showMilliseconds ? intervalSpeed = 10 : intervalSpeed = 1000;
+      this.timerInterval = setInterval(function(){
+        update.call(this);
+      }.bind(this),intervalSpeed);
+      this.offset = Date.now();
+      this.isOn = true;
+    }
+    else {
+      console.log('timer is already running');
+    }
+  }
+
+  Timer.prototype.reset = function()
+  {
+    this.stop();
+    this.time = 0;
+    if(this.options.showMilliseconds)
+    {
+      this.timerElement.innerHTML = "00:00:000";
+    }
+    else
+    {
+      this.timerElement.innerHTML = "00:00";
+    }
+  }
+
 
   //RETURN CONSTRUCTOR
   return this.Timer;
