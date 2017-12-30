@@ -6,7 +6,7 @@
   // formating
       //show milliseconds
 
-
+// use this tutorial to do coundown timer https://www.sitepoint.com/build-javascript-countdown-timer-no-dependencies/
 var Timer = (function(){
   /*******************************************
                   BASIC SETUP
@@ -15,6 +15,7 @@ var Timer = (function(){
   this.Timer = function()
   {
     // global variables
+
     this.isOn = null;
     this.time = 0;
     this.offset = null;
@@ -24,6 +25,8 @@ var Timer = (function(){
     this.startBtn = null;
     this.stopBtn = null;
     this.resetBtn = null;
+    this.timeRemaining = null;
+    this.unitSpans = {};
 
     // default options
     var defaults = {
@@ -31,7 +34,9 @@ var Timer = (function(){
       showMilliseconds:false,
       customClass:'',
       container:'',
-      controls:true
+      controls:true,
+      deadline:'2019-12-31',
+
     }
     // check if argument passed is of type object
     if (arguments[0] && typeof arguments[0] === "object")
@@ -55,9 +60,22 @@ var Timer = (function(){
   //PRIVATE METHODS
   function update()
   {
-    this.time += delta.call(this);
-    var formattedTime = timeFormatter.call(this,this.time);
-    this.timerElement.textContent = formattedTime;
+    if(this.options.timerType == "default")
+    {
+      //update timer element
+      this.time += delta.call(this);
+      var formattedTime = timeFormatter.call(this,this.time);
+      this.timerElement.textContent = formattedTime;
+    }
+    else if(this.options.timerType == "datetimer")
+    {
+      var t = getTimeRemaining.call(this,this.options.deadline);
+      this.unitSpans.daysSpan.textContent = t.days;
+      this.unitSpans.hoursSpan.textContent = ('0' + t.hours).slice(-2);
+      this.unitSpans.minutesSpan.textContent = ('0' + t.minutes).slice(-2);
+      this.unitSpans.secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
+    }
+
   }
 
   function timeFormatter(timeInMilliseconds)
@@ -113,10 +131,10 @@ var Timer = (function(){
            buildDefaultTimer.call(this);
           break;
           case'countdown':
-             buildCountDownTimer.call(this);
+             buildCountDownTimer.call(this,this.timeRemaining);
           break;
           case'datetimer':
-            buildDateTimer.call(this);
+            buildDateTimer.call(this, this.timeRemaining);
           break;
           default:
             alert('please specify a valid timer type');
@@ -129,7 +147,6 @@ var Timer = (function(){
   {
     //create timer element and add default and custom id's and classes
     this.timerElement = document.createElement('h1');
-    this.timerElement.innerHTML = "00:00:000";
     this.timerElement.classList.add('timer');
     this.timerElement.setAttribute("id",createUniqueId.call(this));
     this.options.customClass ? this.timerElement.classList.add(this.options.customClass) : this.options.customClass ;
@@ -183,18 +200,56 @@ var Timer = (function(){
 
   function buildCountDownTimer()
   {
-    console.log('build countdown timer Youth');
+
   }
 
-  function buildDateTimer()
+  function buildDateTimer(t)
   {
-    console.log('build Date Timer Youth');
+    this.timerElement = document.createElement('div');
+    this.container.appendChild(this.timerElement);
+    var html = "";
+    html += 'days: ' + '<span class="days">' + t.days + '</span> ';
+    html += 'hours: ' + '<span class="hours">' + t.hours + '</span> ';
+    html += 'minutes: ' + '<span class="minutes">' + t.minutes + '</span> ';
+    html += 'seconds: ' + '<span class="seconds">' + t.seconds + '</span> ';
+    this.timerElement.innerHTML = html;
+    // add span elements to global object so they can be accessed in the update function
+    this.unitSpans.daysSpan = this.timerElement.querySelector('.days');
+    this.unitSpans.hoursSpan = this.timerElement.querySelector('.hours');
+    this.unitSpans.minutesSpan = this.timerElement.querySelector('.minutes');
+    this.unitSpans.secondsSpan = this.timerElement.querySelector('.seconds');
+      if(t.total<=0)
+      {
+        clearInterval(this.timerInterval);
+      }
+  }
+
+  function getTimeRemaining(endtime)
+  {
+
+    var t = Date.parse(endtime) - Date.parse(new Date());
+    var seconds = Math.floor( (t/1000) % 60 );
+    var minutes = Math.floor( (t/1000/60) % 60 );
+    var hours = Math.floor( (t/(1000*60*60)) % 24 );
+    var days = Math.floor( t/(1000*60*60*24) );
+
+   return {
+     total: t,
+     days: days,
+     hours: hours,
+     minutes: minutes,
+     seconds: seconds
+   };
   }
 
   function init()
   {
+
+    if(this.options.timerType == "default" ) bindEvents.call(this);
+    if(this.options.timerType == "countdown") this.timeRemaining = getTimeRemaining.call(this,this.options.deadline);
+    if(this.options.timerType == 'datetimer') this.timeRemaining =  getTimeRemaining.call(this,this.options.deadline);
+
     buildTimer.call(this);
-    bindEvents.call(this);
   }
 
   function bindEvents()
@@ -220,20 +275,32 @@ var Timer = (function(){
 
   Timer.prototype.start = function()
   {
-    if(!this.isOn)
+    if(this.options.timerType == "default")
     {
-      var intervalSpeed;
-      // set interval speed depending on if milliseconds is true or false
-      this.options.showMilliseconds ? intervalSpeed = 10 : intervalSpeed = 1000;
+      if(!this.isOn)
+      {
+        var intervalSpeed;
+        // set interval speed depending on if milliseconds is true or false
+        this.options.showMilliseconds ? intervalSpeed = 10 : intervalSpeed = 1000;
+        this.timerInterval = setInterval(function(){
+          update.call(this);
+        }.bind(this),intervalSpeed);
+        this.offset = Date.now();
+        this.isOn = true;
+      }
+      else {
+        console.log('timer is already running');
+      }
+    }
+    else if(this.options.timerType == "datetimer")
+    {
+      update.call(this);
       this.timerInterval = setInterval(function(){
         update.call(this);
-      }.bind(this),intervalSpeed);
-      this.offset = Date.now();
-      this.isOn = true;
+      }.bind(this),1000);
     }
-    else {
-      console.log('timer is already running');
-    }
+
+
   }
 
   Timer.prototype.reset = function()
