@@ -4,7 +4,10 @@ var test = new Timer({
   customClass:"my-timer",
   showMilliseconds:true,
   controls:true,
-  timerType:'datetimer'
+  timerType:'countdown'
 });
 
-test.start();
+window.onload = function()
+{
+  test.start();
+}

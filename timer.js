@@ -6,7 +6,7 @@
   // formating
       //show milliseconds
 
-// use this tutorial to do coundown timer https://www.sitepoint.com/build-javascript-countdown-timer-no-dependencies/
+
 var Timer = (function(){
   /*******************************************
                   BASIC SETUP
@@ -15,7 +15,6 @@ var Timer = (function(){
   this.Timer = function()
   {
     // global variables
-
     this.isOn = null;
     this.time = 0;
     this.offset = null;
@@ -36,6 +35,7 @@ var Timer = (function(){
       container:'',
       controls:true,
       deadline:'2019-12-31',
+      timeInMinutes:10
 
     }
     // check if argument passed is of type object
@@ -72,6 +72,13 @@ var Timer = (function(){
       var t = getTimeRemaining.call(this,this.options.deadline);
       this.unitSpans.daysSpan.textContent = t.days;
       this.unitSpans.hoursSpan.textContent = ('0' + t.hours).slice(-2);
+      this.unitSpans.minutesSpan.textContent = ('0' + t.minutes).slice(-2);
+      this.unitSpans.secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
+    }
+    else
+    {
+
+      var t = getTimeRemaining.call(this,this.options.deadline);
       this.unitSpans.minutesSpan.textContent = ('0' + t.minutes).slice(-2);
       this.unitSpans.secondsSpan.innerHTML = ('0' + t.seconds).slice(-2);
     }
@@ -131,13 +138,14 @@ var Timer = (function(){
            buildDefaultTimer.call(this);
           break;
           case'countdown':
-             buildCountDownTimer.call(this,this.timeRemaining);
+            buildCountDownTimer.call(this,this.timeRemaining);
           break;
           case'datetimer':
             buildDateTimer.call(this, this.timeRemaining);
           break;
           default:
             alert('please specify a valid timer type');
+
           break;
       }
     }
@@ -198,11 +206,6 @@ var Timer = (function(){
     return Math.random().toString(36).substr(2, 16);
   }
 
-  function buildCountDownTimer()
-  {
-
-  }
-
   function buildDateTimer(t)
   {
     this.timerElement = document.createElement('div');
@@ -216,6 +219,23 @@ var Timer = (function(){
     // add span elements to global object so they can be accessed in the update function
     this.unitSpans.daysSpan = this.timerElement.querySelector('.days');
     this.unitSpans.hoursSpan = this.timerElement.querySelector('.hours');
+    this.unitSpans.minutesSpan = this.timerElement.querySelector('.minutes');
+    this.unitSpans.secondsSpan = this.timerElement.querySelector('.seconds');
+      if(t.total<=0)
+      {
+        clearInterval(this.timerInterval);
+      }
+  }
+
+  function buildCountDownTimer(t)
+  {
+    this.timerElement = document.createElement('div');
+    this.container.appendChild(this.timerElement);
+    var html = "";
+    html += 'minutes: ' + '<span class="minutes">' + t.minutes + '</span> ';
+    html += 'seconds: ' + '<span class="seconds">' + t.seconds + '</span> ';
+    this.timerElement.innerHTML = html;
+    // add span elements to global object so they can be accessed in the update function
     this.unitSpans.minutesSpan = this.timerElement.querySelector('.minutes');
     this.unitSpans.secondsSpan = this.timerElement.querySelector('.seconds');
       if(t.total<=0)
@@ -246,7 +266,12 @@ var Timer = (function(){
   {
 
     if(this.options.timerType == "default" ) bindEvents.call(this);
-    if(this.options.timerType == "countdown") this.timeRemaining = getTimeRemaining.call(this,this.options.deadline);
+    if(this.options.timerType == "countdown")
+    {
+      var currentTime = Date.parse(new Date());
+      this.options.deadline = new Date(currentTime + this.options.timeInMinutes*60*1000);
+      this.timeRemaining = getTimeRemaining.call(this,this.options.deadline);
+    }
     if(this.options.timerType == 'datetimer') this.timeRemaining =  getTimeRemaining.call(this,this.options.deadline);
 
     buildTimer.call(this);
@@ -292,7 +317,7 @@ var Timer = (function(){
         console.log('timer is already running');
       }
     }
-    else if(this.options.timerType == "datetimer")
+    else if(this.options.timerType == "datetimer" || this.options.timerType == "countdown")
     {
       update.call(this);
       this.timerInterval = setInterval(function(){
